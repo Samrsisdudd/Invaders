@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
   <meta charset="UTF-8">
-  <title>Space Game</title>
+  <title>Invaders</title>
 
   <style>
     body {
@@ -10,20 +10,56 @@
       background: black;
       overflow: hidden;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
       height: 100vh;
     }
 
     canvas {
       border: 2px solid white;
-      background: #000;
+      background: black;
+      max-width: 100vw;
+      max-height: 80vh;
+    }
+
+    #mobileControls {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      width: 70px;
+      height: 70px;
+      font-size: 30px;
+      border: none;
+      border-radius: 50%;
+      background: #222;
+      color: white;
+    }
+
+    .btn:active {
+      background: #555;
+    }
+
+    @media (min-width: 900px) {
+      #mobileControls {
+        display: none;
+      }
     }
   </style>
 </head>
+
 <body>
 
   <canvas id="gameCanvas"></canvas>
+
+  <div id="mobileControls">
+    <button class="btn" id="leftBtn">◀</button>
+    <button class="btn" id="shootBtn">●</button>
+    <button class="btn" id="rightBtn">▶</button>
+  </div>
 
   <script src="game.js"></script>
 
