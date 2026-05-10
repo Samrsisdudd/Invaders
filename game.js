@@ -111,6 +111,58 @@ document.addEventListener("keyup", e => {
   keys[e.code] = false;
 });
 
+// ================= MOBILE CONTROLS =================
+const leftBtn = document.getElementById("leftBtn");
+const rightBtn = document.getElementById("rightBtn");
+const shootBtn = document.getElementById("shootBtn");
+
+// LEFT
+leftBtn.addEventListener("touchstart", e => {
+  e.preventDefault();
+  keys["ArrowLeft"] = true;
+});
+
+leftBtn.addEventListener("touchend", e => {
+  e.preventDefault();
+  keys["ArrowLeft"] = false;
+});
+
+// RIGHT
+rightBtn.addEventListener("touchstart", e => {
+  e.preventDefault();
+  keys["ArrowRight"] = true;
+});
+
+rightBtn.addEventListener("touchend", e => {
+  e.preventDefault();
+  keys["ArrowRight"] = false;
+});
+
+// SHOOT
+shootBtn.addEventListener("touchstart", e => {
+
+  e.preventDefault();
+
+  if (!gameStarted) {
+    gameStarted = true;
+    resetGame();
+  }
+
+  if (gameOver) {
+    resetGame();
+  }
+
+  shootSound.currentTime = 0;
+  shootSound.play().catch(() => {});
+
+  bullets.push({
+    x: player.x + player.width / 2 - 2,
+    y: player.y,
+    width: 4,
+    height: 10
+  });
+});
+
 // ================= ENEMY SHOOT =================
 function enemyShoot() {
 
@@ -326,7 +378,7 @@ function update() {
       boss.direction *= -1;
     }
 
-    // player bullets vs boss
+    // bullets vs boss
     for (let i = bullets.length - 1; i >= 0; i--) {
 
       const b = bullets[i];
@@ -345,6 +397,9 @@ function update() {
         if (boss.life <= 0) {
 
           score += 100;
+
+          explosionSound.currentTime = 0;
+          explosionSound.play().catch(() => {});
 
           boss = null;
         }
@@ -368,7 +423,7 @@ function draw() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // ===== start screen =====
+  // ===== START SCREEN =====
   if (!gameStarted) {
 
     ctx.fillStyle = "white";
@@ -376,16 +431,16 @@ function draw() {
     ctx.font = "30px Arial";
 
     ctx.fillText(
-      "SPACE GAME",
-      canvas.width / 2 - 100,
+      "INVADERS",
+      canvas.width / 2 - 80,
       canvas.height / 2
     );
 
     ctx.font = "16px Arial";
 
     ctx.fillText(
-      "Prem ENTER per començar",
-      canvas.width / 2 - 110,
+      "Prem ENTER o el botó central",
+      canvas.width / 2 - 120,
       canvas.height / 2 + 40
     );
 
@@ -408,18 +463,28 @@ function draw() {
     player.height
   );
 
-  // ===== bullets =====
+  // ===== player bullets =====
   ctx.fillStyle = "white";
 
   bullets.forEach(b => {
-    ctx.fillRect(b.x, b.y, b.width, b.height);
+    ctx.fillRect(
+      b.x,
+      b.y,
+      b.width,
+      b.height
+    );
   });
 
   // ===== enemy bullets =====
   ctx.fillStyle = "orange";
 
   enemyBullets.forEach(b => {
-    ctx.fillRect(b.x, b.y, b.width, b.height);
+    ctx.fillRect(
+      b.x,
+      b.y,
+      b.width,
+      b.height
+    );
   });
 
   // ===== enemies =====
@@ -480,7 +545,7 @@ function draw() {
   ctx.fillText("Vides: " + lives, 10, 60);
   ctx.fillText("Nivell: " + level, 10, 80);
 
-  // ===== game over =====
+  // ===== GAME OVER =====
   if (gameOver) {
 
     ctx.font = "30px Arial";
@@ -494,8 +559,8 @@ function draw() {
     ctx.font = "16px Arial";
 
     ctx.fillText(
-      "Prem ENTER per reiniciar",
-      canvas.width / 2 - 110,
+      "Prem ENTER o el botó central",
+      canvas.width / 2 - 120,
       canvas.height / 2 + 40
     );
   }
