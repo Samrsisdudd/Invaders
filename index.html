@@ -5,50 +5,72 @@
   <title>Invaders</title>
 
   <style>
-    body {
-      margin: 0;
-      background: black;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+    <style>
+  body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: center;
+
+    height: 100vh;
+  }
+
+  canvas {
+    border: 2px solid white;
+    background: black;
+
+    width: 95vw;
+    max-width: 600px;
+
+    height: auto;
+    max-height: 70vh;
+  }
+
+  #mobileControls {
+    display: flex;
+
+    gap: 20px;
+
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  .btn {
+    width: 70px;
+    height: 70px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: #222;
+    color: white;
+
+    font-size: 28px;
+
+    touch-action: manipulation;
+  }
+
+  .btn:active {
+    background: #555;
+  }
+
+  /* desktop */
+  @media (min-width: 900px) {
+    #mobileControls {
+      display: none;
     }
 
     canvas {
-      border: 2px solid white;
-      background: black;
-      max-width: 100vw;
-      max-height: 80vh;
+      width: 600px;
+      height: 400px;
     }
-
-    #mobileControls {
-      display: flex;
-      gap: 20px;
-      margin-top: 10px;
-    }
-
-    .btn {
-      width: 70px;
-      height: 70px;
-      font-size: 30px;
-      border: none;
-      border-radius: 50%;
-      background: #222;
-      color: white;touch-action: manipulation;
-      
-    }
-
-    .btn:active {
-      background: #555;
-    }
-
-    @media (min-width: 900px) {
-      #mobileControls {
-        display: none;
-      }
-    }
+  }
+</style>
   </style>
 </head>
 
