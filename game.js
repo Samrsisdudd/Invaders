@@ -112,34 +112,45 @@ document.addEventListener("keyup", e => {
 });
 
 // ================= MOBILE CONTROLS =================
+// ================= MOBILE CONTROLS =================
 const leftBtn = document.getElementById("leftBtn");
 const rightBtn = document.getElementById("rightBtn");
 const shootBtn = document.getElementById("shootBtn");
 
-// LEFT
-leftBtn.addEventListener("touchstart", e => {
+// ===== LEFT =====
+leftBtn.addEventListener("pointerdown", e => {
   e.preventDefault();
   keys["ArrowLeft"] = true;
 });
 
-leftBtn.addEventListener("touchend", e => {
+leftBtn.addEventListener("pointerup", e => {
   e.preventDefault();
   keys["ArrowLeft"] = false;
 });
 
-// RIGHT
-rightBtn.addEventListener("touchstart", e => {
+leftBtn.addEventListener("pointerleave", e => {
+  e.preventDefault();
+  keys["ArrowLeft"] = false;
+});
+
+// ===== RIGHT =====
+rightBtn.addEventListener("pointerdown", e => {
   e.preventDefault();
   keys["ArrowRight"] = true;
 });
 
-rightBtn.addEventListener("touchend", e => {
+rightBtn.addEventListener("pointerup", e => {
   e.preventDefault();
   keys["ArrowRight"] = false;
 });
 
-// SHOOT
-shootBtn.addEventListener("touchstart", e => {
+rightBtn.addEventListener("pointerleave", e => {
+  e.preventDefault();
+  keys["ArrowRight"] = false;
+});
+
+// ===== SHOOT =====
+shootBtn.addEventListener("pointerdown", e => {
 
   e.preventDefault();
 
@@ -162,23 +173,6 @@ shootBtn.addEventListener("touchstart", e => {
     height: 10
   });
 });
-
-// ================= ENEMY SHOOT =================
-function enemyShoot() {
-
-  if (enemies.length === 0) return;
-
-  const shooter =
-    enemies[Math.floor(Math.random() * enemies.length)];
-
-  enemyBullets.push({
-    x: shooter.x + shooter.width / 2,
-    y: shooter.y + shooter.height,
-    width: 6,
-    height: 12,
-    speed: 4
-  });
-}
 
 // ================= SPAWN BOSS =================
 function spawnBoss() {
