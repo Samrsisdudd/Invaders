@@ -4,33 +4,86 @@ const ctx = canvas.getContext("2d");
 canvas.width = 600;
 canvas.height = 400;
 
+// ================= AUDIO CONTEXT =================
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+function initAudio() {
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playShootSound() {
+  initAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+
+  gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.1);
+}
+
+function playExplosionSound() {
+  initAudio();
+  const bufferSize = audioCtx.sampleRate * 0.3;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+  filter.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  noise.start();
+}
+
 // ================= STATE =================
 let bullets = [];
 let enemyBullets = [];
 let enemies = [];
+let bunkers = [];
 let boss = null;
 
 let keys = {};
 let enemyDirection = 1;
 
-let gameStarted = false;
-let gameOver = false;
-
 let score = 0;
-let highScore = localStorage.getItem("highScore") || 0;
 let lives = 3;
 let level = 1;
+
+let gameStarted = false;
+let gameOver = false;
 
 let shootTimer = 0;
 let lastBossScore = 0;
 
-// animació enemics
 let animationTimer = 0;
 let animationFrame = 0;
-
-// animació boss
-let bossAnimationTimer = 0;
-let bossAnimationFrame = 0;
 
 // ================= PLAYER =================
 const player = {
@@ -38,7 +91,8 @@ const player = {
   y: canvas.height - 50,
   width: 40,
   height: 20,
-  speed: 5
+  speed: 5,
+  dx: 0
 };
 
 // ================= IMAGES =================
@@ -51,38 +105,60 @@ enemyImg2.src = "img/enemy2.png";
 const bossImg = new Image();
 bossImg.src = "img/boss.png";
 
-const bossImg2 = new Image();
-bossImg2.src = "img/boss2.png";
-
-// ================= SOUNDS =================
-const shootSound = new Audio("sounds/shoot.mp3");
-const explosionSound = new Audio("sounds/explosion.mp3");
-const hitSound = new Audio("sounds/hit.mp3");
-
-shootSound.volume = 0.3;
-explosionSound.volume = 0.5;
-hitSound.volume = 0.7;
-
 // ================= CREATE ENEMIES =================
 function createEnemies() {
   enemies = [];
-
   for (let i = 0; i < 6; i++) {
     for (let j = 0; j < 3; j++) {
       enemies.push({
         x: 60 + i * 80,
         y: 40 + j * 60,
-        width: 50,
-        height: 50
+        width: 40,
+        height: 40
       });
     }
   }
 }
 
-// ================= CONTROLS =================
-document.addEventListener("keydown", e => {
+// ================= CREATE BUNKERS =================
+function createBunkers() {
+  bunkers = [];
+  const bunkerCount = 4;
+  const bunkerWidth = 48;
+  const blockSize = 8;
+  const spacing = (canvas.width - (bunkerCount * bunkerWidth)) / (bunkerCount + 1);
 
+  for (let i = 0; i < bunkerCount; i++) {
+    const startX = spacing + i * (bunkerWidth + spacing);
+    const startY = canvas.height - 110;
+
+    const shape = [
+      [0, 1, 1, 1, 1, 0],
+      [1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1],
+      [1, 1, 0, 0, 1, 1]
+    ];
+
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (shape[r][c] === 1) {
+          bunkers.push({
+            x: startX + c * blockSize,
+            y: startY + r * blockSize,
+            width: blockSize,
+            height: blockSize,
+            life: 3
+          });
+        }
+      }
+    }
+  }
+}
+
+// ================= INPUT (TECLAT) =================
+document.addEventListener("keydown", e => {
   keys[e.code] = true;
+  initAudio();
 
   if (!gameStarted && e.code === "Enter") {
     gameStarted = true;
@@ -94,16 +170,7 @@ document.addEventListener("keydown", e => {
   }
 
   if (e.code === "Space" && gameStarted && !gameOver) {
-
-    shootSound.currentTime = 0;
-    shootSound.play().catch(() => {});
-
-    bullets.push({
-      x: player.x + player.width / 2 - 2,
-      y: player.y,
-      width: 4,
-      height: 10
-    });
+    shoot();
   }
 });
 
@@ -111,489 +178,396 @@ document.addEventListener("keyup", e => {
   keys[e.code] = false;
 });
 
-// ================= MOBILE CONTROLS =================
-// ================= MOBILE CONTROLS =================
-const leftBtn = document.getElementById("leftBtn");
-const rightBtn = document.getElementById("rightBtn");
-const shootBtn = document.getElementById("shootBtn");
+// ================= INPUT (JOYSTICK I BOTÓ TÀCTIL) =================
+const joystick = document.getElementById('joystick');
+const stick = document.getElementById('stick');
+const shootBtn = document.getElementById('shoot');
 
-// ===== LEFT =====
-leftBtn.addEventListener("pointerdown", e => {
-  e.preventDefault();
-  keys["ArrowLeft"] = true;
-});
+let joystickActive = false;
+const maxDistance = 35;
 
-leftBtn.addEventListener("pointerup", e => {
-  e.preventDefault();
-  keys["ArrowLeft"] = false;
-});
+function handleJoystick(clientX) {
+  const rect = joystick.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  let deltaX = clientX - centerX;
 
-leftBtn.addEventListener("pointerleave", e => {
-  e.preventDefault();
-  keys["ArrowLeft"] = false;
-});
+  deltaX = Math.max(-maxDistance, Math.min(maxDistance, deltaX));
+  stick.style.left = `${35 + deltaX}px`;
 
-// ===== RIGHT =====
-rightBtn.addEventListener("pointerdown", e => {
-  e.preventDefault();
-  keys["ArrowRight"] = true;
-});
+  player.dx = (deltaX / maxDistance) * player.speed;
+}
 
-rightBtn.addEventListener("pointerup", e => {
-  e.preventDefault();
-  keys["ArrowRight"] = false;
-});
+function resetStick() {
+  joystickActive = false;
+  stick.style.left = '35px';
+  player.dx = 0;
+}
 
-rightBtn.addEventListener("pointerleave", e => {
-  e.preventDefault();
-  keys["ArrowRight"] = false;
-});
+if (joystick && shootBtn) {
+  joystick.addEventListener('touchstart', e => {
+    initAudio();
+    joystickActive = true;
+    handleJoystick(e.touches[0].clientX);
+  });
 
-// ===== SHOOT =====
-shootBtn.addEventListener("pointerdown", e => {
+  joystick.addEventListener('touchmove', e => {
+    if (joystickActive) handleJoystick(e.touches[0].clientX);
+  });
 
-  e.preventDefault();
+  joystick.addEventListener('touchend', resetStick);
 
-  if (!gameStarted) {
-    gameStarted = true;
-    resetGame();
-  }
+  shootBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    initAudio();
+    if (!gameStarted || gameOver) {
+      gameStarted = true;
+      resetGame();
+    } else {
+      shoot();
+    }
+  });
+}
 
-  if (gameOver) {
-    resetGame();
-  }
-
-  shootSound.currentTime = 0;
-  shootSound.play().catch(() => {});
-
+// ================= SHOOT =================
+function shoot() {
   bullets.push({
     x: player.x + player.width / 2 - 2,
     y: player.y,
     width: 4,
     height: 10
   });
-});
+  playShootSound();
+}
 
-// ================= SPAWN BOSS =================
+// ================= ENEMY SHOOT =================
+function enemyShoot() {
+  if (enemies.length === 0) return;
+
+  const e = enemies[Math.floor(Math.random() * enemies.length)];
+
+  enemyBullets.push({
+    x: e.x + e.width / 2,
+    y: e.y + e.height,
+    width: 5,
+    height: 10,
+    speed: 3
+  });
+}
+
+// ================= BOSS SHOOT =================
+function bossShoot() {
+  if (!boss) return;
+
+  // Dispar central
+  enemyBullets.push({
+    x: boss.x + boss.width / 2 - 4,
+    y: boss.y + boss.height,
+    width: 8,
+    height: 16,
+    speed: 5
+  });
+
+  // Dispar diagonal esquerra
+  enemyBullets.push({
+    x: boss.x + 10,
+    y: boss.y + boss.height,
+    width: 6,
+    height: 12,
+    speed: 4,
+    dx: -1.5
+  });
+
+  // Dispar diagonal dreta
+  enemyBullets.push({
+    x: boss.x + boss.width - 10,
+    y: boss.y + boss.height,
+    width: 6,
+    height: 12,
+    speed: 4,
+    dx: 1.5
+  });
+}
+
+// ================= BOSS =================
 function spawnBoss() {
-
   boss = {
-    x: canvas.width / 2 - 65,
+    x: canvas.width / 2 - 40,
     y: 30,
-    width: 130,
-    height: 130,
+    width: 80,
+    height: 80,
     life: 20,
-    direction: 1
+    dir: 1,
+    shootTimer: 0
   };
-
-  bossAnimationFrame = 0;
-  bossAnimationTimer = 0;
 }
 
-// ================= UPDATE =================
-function update() {
-
-  if (!gameStarted || gameOver) return;
-
-  // ===== animació enemics =====
-  animationTimer++;
-
-  if (animationTimer > 30) {
-    animationFrame =
-      animationFrame === 0 ? 1 : 0;
-
-    animationTimer = 0;
-  }
-
-  // ===== animació boss =====
-  if (boss) {
-
-    bossAnimationTimer++;
-
-    if (bossAnimationTimer > 20) {
-
-      bossAnimationFrame =
-        bossAnimationFrame === 0 ? 1 : 0;
-
-      bossAnimationTimer = 0;
-    }
-  }
-
-  // ===== player =====
-  if (keys["ArrowLeft"]) {
-    player.x -= player.speed;
-  }
-
-  if (keys["ArrowRight"]) {
-    player.x += player.speed;
-  }
-
-  if (player.x < 0) player.x = 0;
-
-  if (player.x + player.width > canvas.width) {
-    player.x = canvas.width - player.width;
-  }
-
-  // ===== bullets =====
-  bullets.forEach(b => {
-    b.y -= 7;
-  });
-
-  bullets = bullets.filter(b => b.y > 0);
-
-  // ===== enemy bullets =====
-  enemyBullets.forEach(b => {
-    b.y += b.speed;
-  });
-
-  enemyBullets =
-    enemyBullets.filter(b => b.y < canvas.height);
-
-  // ===== enemies move =====
-  let hitEdge = false;
-
-  enemies.forEach(e => {
-
-    e.x += enemyDirection * (1 + level * 0.2);
-
-    if (e.x < 0 || e.x + e.width > canvas.width) {
-      hitEdge = true;
-    }
-  });
-
-  if (hitEdge) {
-
-    enemyDirection *= -1;
-
-    enemies.forEach(e => {
-      e.y += 20;
-    });
-  }
-
-  // ===== enemies reached bottom =====
-  for (let e of enemies) {
-
-    if (e.y + e.height >= canvas.height - 10) {
-      gameOver = true;
-      return;
-    }
-  }
-
-  // ===== enemy shoot =====
-  shootTimer++;
-
-  if (shootTimer > Math.max(15, 60 - level * 5)) {
-
-    enemyShoot();
-
-    shootTimer = 0;
-  }
-
-  // ===== player hit =====
-  for (let i = enemyBullets.length - 1; i >= 0; i--) {
-
-    const b = enemyBullets[i];
-
-    if (
-      b.x < player.x + player.width &&
-      b.x + b.width > player.x &&
-      b.y < player.y + player.height &&
-      b.y + b.height > player.y
-    ) {
-
-      enemyBullets.splice(i, 1);
-
-      lives--;
-
-      hitSound.currentTime = 0;
-      hitSound.play().catch(() => {});
-
-      if (lives <= 0) {
-        gameOver = true;
-      }
-    }
-  }
-
-  // ===== bullets vs enemies =====
-  for (let bi = bullets.length - 1; bi >= 0; bi--) {
-
-    for (let ei = enemies.length - 1; ei >= 0; ei--) {
-
-      const b = bullets[bi];
-      const e = enemies[ei];
-
-      if (
-        b.x < e.x + e.width &&
-        b.x + b.width > e.x &&
-        b.y < e.y + e.height &&
-        b.y + b.height > e.y
-      ) {
-
-        bullets.splice(bi, 1);
-        enemies.splice(ei, 1);
-
-        explosionSound.currentTime = 0;
-        explosionSound.play().catch(() => {});
-
-        score += 10;
-
-        if (score > highScore) {
-
-          highScore = score;
-
-          localStorage.setItem(
-            "highScore",
-            highScore
-          );
-        }
-
-        break;
-      }
-    }
-  }
-
-  // ===== boss spawn =====
-  if (!boss && score >= lastBossScore + 200) {
-
-    spawnBoss();
-
-    lastBossScore = score;
-  }
-
-  // ===== boss =====
-  if (boss) {
-
-    boss.x += boss.direction * 2;
-
-    if (
-      boss.x < 0 ||
-      boss.x + boss.width > canvas.width
-    ) {
-      boss.direction *= -1;
-    }
-
-    // bullets vs boss
-    for (let i = bullets.length - 1; i >= 0; i--) {
-
-      const b = bullets[i];
-
-      if (
-        b.x < boss.x + boss.width &&
-        b.x + b.width > boss.x &&
-        b.y < boss.y + boss.height &&
-        b.y + b.height > boss.y
-      ) {
-
-        bullets.splice(i, 1);
-
-        boss.life--;
-
-        if (boss.life <= 0) {
-
-          score += 100;
-
-          explosionSound.currentTime = 0;
-          explosionSound.play().catch(() => {});
-
-          boss = null;
-        }
-
-        break;
-      }
-    }
-  }
-
-  // ===== next level =====
-  if (enemies.length === 0) {
-
-    level++;
-
-    createEnemies();
-  }
-}
-
-// ================= DRAW =================
-function draw() {
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // ===== START SCREEN =====
-  if (!gameStarted) {
-
-    ctx.fillStyle = "white";
-
-    ctx.font = "30px Arial";
-
-    ctx.fillText(
-      "INVADERS",
-      canvas.width / 2 - 80,
-      canvas.height / 2
-    );
-
-    ctx.font = "16px Arial";
-
-    ctx.fillText(
-      "Prem ENTER o el botó central",
-      canvas.width / 2 - 120,
-      canvas.height / 2 + 40
-    );
-
-    return;
-  }
-
-  // ===== enemy image =====
-  const currentEnemyImg =
-    animationFrame === 0
-      ? enemyImg
-      : enemyImg2;
-
-  // ===== player =====
-  ctx.fillStyle = "lime";
-
-  ctx.fillRect(
-    player.x,
-    player.y,
-    player.width,
-    player.height
+// ================= COLLISION =================
+function hit(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
   );
-
-  // ===== player bullets =====
-  ctx.fillStyle = "white";
-
-  bullets.forEach(b => {
-    ctx.fillRect(
-      b.x,
-      b.y,
-      b.width,
-      b.height
-    );
-  });
-
-  // ===== enemy bullets =====
-  ctx.fillStyle = "orange";
-
-  enemyBullets.forEach(b => {
-    ctx.fillRect(
-      b.x,
-      b.y,
-      b.width,
-      b.height
-    );
-  });
-
-  // ===== enemies =====
-  enemies.forEach(e => {
-
-    ctx.drawImage(
-      currentEnemyImg,
-      e.x,
-      e.y,
-      e.width,
-      e.height
-    );
-  });
-
-  // ===== boss =====
-  if (boss) {
-
-    const currentBossImg =
-      bossAnimationFrame === 0
-        ? bossImg
-        : bossImg2;
-
-    ctx.drawImage(
-      currentBossImg,
-      boss.x,
-      boss.y,
-      boss.width,
-      boss.height
-    );
-
-    // life bar
-    ctx.fillStyle = "red";
-
-    ctx.fillRect(
-      boss.x,
-      boss.y - 10,
-      boss.width,
-      5
-    );
-
-    ctx.fillStyle = "lime";
-
-    ctx.fillRect(
-      boss.x,
-      boss.y - 10,
-      boss.width * (boss.life / 20),
-      5
-    );
-  }
-
-  // ===== UI =====
-  ctx.fillStyle = "white";
-
-  ctx.font = "16px Arial";
-
-  ctx.fillText("Score: " + score, 10, 20);
-  ctx.fillText("Record: " + highScore, 10, 40);
-  ctx.fillText("Vides: " + lives, 10, 60);
-  ctx.fillText("Nivell: " + level, 10, 80);
-
-  // ===== GAME OVER =====
-  if (gameOver) {
-
-    ctx.font = "30px Arial";
-
-    ctx.fillText(
-      "GAME OVER",
-      canvas.width / 2 - 90,
-      canvas.height / 2
-    );
-
-    ctx.font = "16px Arial";
-
-    ctx.fillText(
-      "Prem ENTER o el botó central",
-      canvas.width / 2 - 120,
-      canvas.height / 2 + 40
-    );
-  }
 }
 
 // ================= RESET =================
 function resetGame() {
-
   bullets = [];
   enemyBullets = [];
   enemies = [];
+  bunkers = [];
   boss = null;
 
   score = 0;
   lives = 3;
   level = 1;
-
   lastBossScore = 0;
 
   gameOver = false;
-
   player.x = canvas.width / 2 - 20;
 
   createEnemies();
+  createBunkers();
+}
+
+// ================= UPDATE =================
+function update() {
+  if (!gameStarted || gameOver) return;
+
+  // ===== PLAYER =====
+  if (keys["ArrowLeft"]) player.x -= player.speed;
+  if (keys["ArrowRight"]) player.x += player.speed;
+  player.x += player.dx;
+
+  player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+
+  // ===== BULLETS =====
+  bullets.forEach(b => b.y -= 7);
+  bullets = bullets.filter(b => b.y > 0);
+
+  enemyBullets.forEach(b => {
+    b.y += b.speed;
+    if (b.dx) b.x += b.dx;
+  });
+  enemyBullets = enemyBullets.filter(b => b.y < canvas.height && b.x > 0 && b.x < canvas.width);
+
+  // ===== ANIMATION =====
+  animationTimer++;
+  if (animationTimer > 30) {
+    animationFrame = animationFrame === 0 ? 1 : 0;
+    animationTimer = 0;
+  }
+
+  // ===== ENEMIES MOVE =====
+  let edge = false;
+  enemies.forEach(e => {
+    e.x += enemyDirection * (1 + level * 0.2);
+    if (e.x < 0 || e.x + e.width > canvas.width) {
+      edge = true;
+    }
+  });
+
+  if (edge) {
+    enemyDirection *= -1;
+    enemies.forEach(e => e.y += 15);
+  }
+
+  // ===== ENEMIES REACH PLAYER OR BUNKERS =====
+  enemies.forEach(e => {
+    if (e.y + e.height >= player.y) {
+      gameOver = true;
+    }
+    for (let buI = bunkers.length - 1; buI >= 0; buI--) {
+      if (hit(e, bunkers[buI])) {
+        bunkers.splice(buI, 1);
+      }
+    }
+  });
+
+  // ===== ENEMY SHOOT =====
+  shootTimer++;
+  if (shootTimer > Math.max(15, 60 - level * 5)) {
+    enemyShoot();
+    shootTimer = 0;
+  }
+
+  // ===== PLAYER HIT =====
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    const b = enemyBullets[i];
+    if (hit(b, player)) {
+      enemyBullets.splice(i, 1);
+      lives--;
+      playExplosionSound();
+      if (lives <= 0) gameOver = true;
+    }
+  }
+
+  // ===== BULLETS VS ENEMIES =====
+  for (let bi = bullets.length - 1; bi >= 0; bi--) {
+    for (let ei = enemies.length - 1; ei >= 0; ei--) {
+      if (hit(bullets[bi], enemies[ei])) {
+        bullets.splice(bi, 1);
+        enemies.splice(ei, 1);
+        score += 10;
+        playExplosionSound();
+        break;
+      }
+    }
+  }
+
+  // ===== BULLETS VS BUNKERS =====
+  for (let bi = bullets.length - 1; bi >= 0; bi--) {
+    for (let buI = bunkers.length - 1; buI >= 0; buI--) {
+      if (hit(bullets[bi], bunkers[buI])) {
+        bunkers[buI].life--;
+        bullets.splice(bi, 1);
+        if (bunkers[buI].life <= 0) bunkers.splice(buI, 1);
+        break;
+      }
+    }
+  }
+
+  // ===== ENEMY BULLETS VS BUNKERS =====
+  for (let ebi = enemyBullets.length - 1; ebi >= 0; ebi--) {
+    for (let buI = bunkers.length - 1; buI >= 0; buI--) {
+      if (hit(enemyBullets[ebi], bunkers[buI])) {
+        bunkers[buI].life--;
+        enemyBullets.splice(ebi, 1);
+        if (bunkers[buI].life <= 0) bunkers.splice(buI, 1);
+        break;
+      }
+    }
+  }
+
+  // ===== BOSS SPAWN =====
+  if (!boss && score > 0 && score % 200 === 0 && score !== lastBossScore) {
+    spawnBoss();
+    lastBossScore = score;
+  }
+
+  // ===== BOSS LOGIC =====
+  if (boss) {
+    boss.x += boss.dir * 2;
+    if (boss.x < 0 || boss.x + boss.width > canvas.width) {
+      boss.dir *= -1;
+    }
+
+    boss.shootTimer = (boss.shootTimer || 0) + 1;
+    if (boss.shootTimer > 50) {
+      bossShoot();
+      boss.shootTimer = 0;
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      if (hit(bullets[i], boss)) {
+        bullets.splice(i, 1);
+        boss.life--;
+        playExplosionSound();
+
+        if (boss.life <= 0) {
+          boss = null;
+          score += 100;
+        }
+      }
+    }
+  }
+
+  // ===== NEXT LEVEL =====
+  if (enemies.length === 0 && !boss) {
+    level++;
+    createEnemies();
+    createBunkers();
+  }
+}
+
+// ================= DRAW =================
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!gameStarted) {
+    ctx.fillStyle = "white";
+    ctx.font = "20px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("PREM ENTER O DISPARA PER COMENÇAR", canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  // PLAYER
+  ctx.fillStyle = "lime";
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+
+  // BULLETS
+  ctx.fillStyle = "white";
+  bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+
+  // ENEMY BULLETS
+  ctx.fillStyle = "orange";
+  enemyBullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+
+  // BUNKERS
+  bunkers.forEach(b => {
+    if (b.life === 3) ctx.fillStyle = "#00ff66";
+    else if (b.life === 2) ctx.fillStyle = "#00aa44";
+    else ctx.fillStyle = "#005522";
+
+    ctx.fillRect(b.x, b.y, b.width, b.height);
+  });
+
+  // ENEMIES
+  enemies.forEach(e => {
+    const img = animationFrame === 0 ? enemyImg : enemyImg2;
+    if (enemyImg.complete && enemyImg2.complete && enemyImg.naturalWidth !== 0) {
+      ctx.drawImage(img, e.x, e.y, e.width, e.height);
+    } else {
+      ctx.fillStyle = "red";
+      ctx.fillRect(e.x, e.y, e.width, e.height);
+    }
+  });
+
+  // BOSS
+  if (boss) {
+    if (bossImg.complete && bossImg.naturalWidth !== 0) {
+      ctx.drawImage(bossImg, boss.x, boss.y, boss.width, boss.height);
+    } else {
+      ctx.fillStyle = "purple";
+      ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+    }
+
+    // Barra de vida del Boss
+    ctx.fillStyle = "red";
+    ctx.fillRect(boss.x, boss.y - 10, boss.width, 5);
+    ctx.fillStyle = "green";
+    ctx.fillRect(boss.x, boss.y - 10, (boss.width * boss.life) / 20, 5);
+  }
+
+  // UI
+  ctx.fillStyle = "white";
+  ctx.font = "14px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("Score: " + score, 10, 20);
+  ctx.fillText("Vides: " + lives, 10, 40);
+  ctx.fillText("Nivell: " + level, 10, 60);
+
+  if (gameOver) {
+    ctx.fillStyle = "red";
+    ctx.font = "30px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+    ctx.fillStyle = "white";
+    ctx.font = "16px sans-serif";
+    ctx.fillText("Prem ENTER per reiniciar", canvas.width / 2, canvas.height / 2 + 40);
+  }
 }
 
 // ================= LOOP =================
-function gameLoop() {
-
+function loop() {
   update();
   draw();
-
-  requestAnimationFrame(gameLoop);
+  requestAnimationFrame(loop);
 }
 
-// ================= START =================
-enemyImg.onload = () => {
-
-  createEnemies();
-
-  gameLoop();
-};
+// START GAME
+createEnemies();
+createBunkers();
+loop();
