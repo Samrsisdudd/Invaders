@@ -20,7 +20,7 @@ html, body {
   font-family: sans-serif;
 }
 
-/* Contenidor contenidor per al Canvas que manté la proporció 3:2 */
+/* Contenidor per al Canvas que manté la proporció 3:2 */
 #canvas-container {
   width: 100%;
   flex: 1;
@@ -28,14 +28,13 @@ html, body {
   justify-content: center;
   align-items: center;
   padding: 10px;
-  min-height: 0; /* Evita que el flexbox es desbordi */
+  min-height: 0;
 }
 
 canvas {
   border: 2px solid white;
   background: #000;
   display: block;
-  /* El canvas manté la seva proporció 3:2 i s'adapta tant en amplada com en alçada */
   aspect-ratio: 3 / 2;
   max-width: 100%;
   max-height: 100%;
@@ -52,7 +51,7 @@ canvas {
   padding: 10px 30px 20px 30px;
   pointer-events: none;
   z-index: 10;
-  flex-shrink: 0; /* Impedeix que la zona de controls es xafi */
+  flex-shrink: 0;
 }
 
 #shoot {
@@ -91,6 +90,6 @@ canvas {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.5);
   position: absolute;
-  top: 30px;
-  left: 30px;
+  top: 32px;
+  left: 32px;
 }
