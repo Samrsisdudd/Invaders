@@ -2,13 +2,16 @@
 <html lang="ca">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Space Game</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <canvas id="gameCanvas"></canvas>
+  <!-- Contenidor que força la proporció del joc -->
+  <div id="canvas-container">
+    <canvas id="gameCanvas"></canvas>
+  </div>
 
   <!-- Capa de controls tàctils per a mòbil -->
   <div id="ui">
