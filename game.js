@@ -184,7 +184,7 @@ const stick = document.getElementById('stick');
 const shootBtn = document.getElementById('shoot');
 
 let joystickActive = false;
-const maxDistance = 35;
+const maxDistance = 32;
 
 function handleJoystick(clientX) {
   const rect = joystick.getBoundingClientRect();
@@ -192,29 +192,29 @@ function handleJoystick(clientX) {
   let deltaX = clientX - centerX;
 
   deltaX = Math.max(-maxDistance, Math.min(maxDistance, deltaX));
-  stick.style.left = `${35 + deltaX}px`;
+  stick.style.left = `${32 + deltaX}px`;
 
-  // Ajustem la velocitat segons l'escala real del canvas si s'ha reduït
-  const scale = canvas.getBoundingClientRect().width / canvas.width;
-  player.dx = ((deltaX / maxDistance) * player.speed) / scale;
+  player.dx = (deltaX / maxDistance) * player.speed;
 }
 
 function resetStick() {
   joystickActive = false;
-  stick.style.left = '35px';
+  stick.style.left = '32px';
   player.dx = 0;
 }
 
 if (joystick && shootBtn) {
   joystick.addEventListener('touchstart', e => {
+    e.preventDefault();
     initAudio();
     joystickActive = true;
     handleJoystick(e.touches[0].clientX);
-  });
+  }, { passive: false });
 
   joystick.addEventListener('touchmove', e => {
+    e.preventDefault();
     if (joystickActive) handleJoystick(e.touches[0].clientX);
-  });
+  }, { passive: false });
 
   joystick.addEventListener('touchend', resetStick);
 
@@ -227,7 +227,7 @@ if (joystick && shootBtn) {
     } else {
       shoot();
     }
-  });
+  }, { passive: false });
 }
 
 // ================= SHOOT =================
@@ -558,7 +558,7 @@ function draw() {
     ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
     ctx.fillStyle = "white";
     ctx.font = "16px sans-serif";
-    ctx.fillText("Prem ENTER per reiniciar", canvas.width / 2, canvas.height / 2 + 40);
+    ctx.fillText("Prem ENTER o Dispara per reiniciar", canvas.width / 2, canvas.height / 2 + 40);
   }
 }
 
@@ -573,10 +573,3 @@ function loop() {
 createEnemies();
 createBunkers();
 loop();
-
-// Evita gestos de zoom i desplaçament en mòbils mentre es juga
-document.addEventListener('touchmove', function(e) {
-  if (e.scale !== 1) { 
-    e.preventDefault(); 
-  }
-}, { passive: false });
