@@ -1,67 +1,61 @@
 * {
   box-sizing: border-box;
-  touch-action: manipulation;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  margin: 0;
+  padding: 0;
 }
 
 html, body {
-  margin: 0;
-  padding: 0;
   width: 100%;
   height: 100%;
-  height: 100dvh;
   background: black;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   font-family: sans-serif;
+  position: relative;
 }
 
-/* Contenidor per al Canvas que manté la proporció 3:2 */
 #canvas-container {
-  width: 100%;
-  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px;
-  min-height: 0;
+  width: 100%;
+  height: 100%;
+  padding: 5px;
 }
 
 canvas {
-  border: 2px solid white;
+  border: 1px solid white;
   background: #000;
   display: block;
-  aspect-ratio: 3 / 2;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
 }
 
+/* UI Flotant per defecte */
 #ui {
+  position: absolute;
+  bottom: 15px;
+  left: 0;
   width: 100%;
-  max-width: 500px;
-  height: 140px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px 30px 20px 30px;
+  align-items: flex-end;
+  padding: 0 25px;
   pointer-events: none;
   z-index: 10;
-  flex-shrink: 0;
 }
 
 #shoot {
   font-size: 28px;
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   color: white;
-  border: 2px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.8);
   pointer-events: auto;
   cursor: pointer;
   display: flex;
@@ -74,22 +68,41 @@ canvas {
 }
 
 #joystick {
-  width: 110px;
-  height: 110px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   position: relative;
   pointer-events: auto;
-  touch-action: none;
 }
 
 #stick {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
   position: absolute;
-  top: 32px;
-  left: 32px;
+  top: 28px;
+  left: 28px;
+}
+
+/* Adaptació específica quan el mòbil està en VERTICAL */
+@media (orientation: portrait) {
+  body {
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  #canvas-container {
+    flex: 1;
+    height: auto;
+  }
+
+  #ui {
+    position: relative;
+    bottom: 0;
+    height: 120px;
+    align-items: center;
+  }
 }
