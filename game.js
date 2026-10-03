@@ -194,7 +194,9 @@ function handleJoystick(clientX) {
   deltaX = Math.max(-maxDistance, Math.min(maxDistance, deltaX));
   stick.style.left = `${35 + deltaX}px`;
 
-  player.dx = (deltaX / maxDistance) * player.speed;
+  // Ajustem la velocitat segons l'escala real del canvas si s'ha reduït
+  const scale = canvas.getBoundingClientRect().width / canvas.width;
+  player.dx = ((deltaX / maxDistance) * player.speed) / scale;
 }
 
 function resetStick() {
@@ -571,3 +573,10 @@ function loop() {
 createEnemies();
 createBunkers();
 loop();
+
+// Evita gestos de zoom i desplaçament en mòbils mentre es juga
+document.addEventListener('touchmove', function(e) {
+  if (e.scale !== 1) { 
+    e.preventDefault(); 
+  }
+}, { passive: false });
