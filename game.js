@@ -120,6 +120,33 @@ function createEnemies() {
   }
 }
 
+// ================= REDIMENSIONAMENT DINÀMIC =================
+function resizeCanvas() {
+  const isPortrait = window.innerHeight > window.innerWidth;
+
+  // En vertical deixem espai a baix per als controls (~130px)
+  // En horitzontal deixem un petit marge d'un 5% a cada costat
+  const availableWidth = window.innerWidth * 0.95;
+  const availableHeight = isPortrait 
+    ? (window.innerHeight - 140) * 0.95 
+    : window.innerHeight * 0.92;
+
+  // Calculem quina mida manté exactament la proporció 3:2
+  let w = availableWidth;
+  let h = w * (2 / 3);
+
+  if (h > availableHeight) {
+    h = availableHeight;
+    w = h * (3 / 2);
+  }
+
+  canvas.style.width = `${Math.floor(w)}px`;
+  canvas.style.height = `${Math.floor(h)}px`;
+}
+
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", () => setTimeout(resizeCanvas, 200));
+
 // ================= CREATE BUNKERS =================
 function createBunkers() {
   bunkers = [];
